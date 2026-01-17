@@ -218,6 +218,9 @@ async def clear_session(session_id: str):
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+# For Vercel serverless
+handler = app
+
 if __name__ == "__main__":
     import uvicorn
 
