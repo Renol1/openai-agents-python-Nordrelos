@@ -15,12 +15,12 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from agents import ItemHelpers, MessageOutputItem, Runner, TResponseInputItem
 
-from multi_agents import AGENTS, get_agent, get_available_agents
+from .multi_agents import AGENTS, get_agent, get_available_agents
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -63,12 +63,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.get("/")
-async def root():
-    """Serve the chat UI."""
-    return FileResponse("static/index.html")
 
 
 @app.get("/api/agents")
@@ -195,10 +189,6 @@ async def clear_session(session_id: str):
         del sessions[session_id]
         return {"status": "cleared"}
     raise HTTPException(status_code=404, detail="Session not found")
-
-
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # For Vercel serverless
