@@ -1,19 +1,6 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "examples/multi_agent_chat/server.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "examples/multi_agent_chat/server.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "examples/multi_agent_chat/static/$1"
-    }
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api" },
+    { "source": "/(.*)", "destination": "/public/$1" }
   ]
 }
