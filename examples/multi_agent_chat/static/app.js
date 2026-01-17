@@ -1,4 +1,4 @@
-// Multi-Agent Chat Application
+// AI Agent Hub - Multi-Agent Chat Application
 
 let currentAgent = 'triage';
 let sessionId = null;
@@ -9,28 +9,69 @@ let agentSwitches = 0;
 let lastAgent = null;
 
 const agentDescriptions = {
-    'triage': 'Routes to the right specialist (handoffs pattern)',
-    'orchestrator': 'Coordinates multiple specialists (agents-as-tools pattern)',
-    'research': 'Research and information specialist',
-    'creative': 'Creative writing specialist',
-    'technical': 'Technical and programming specialist',
-    'business': 'Business and strategy specialist',
+    'triage': 'Routes to specialists',
+    'orchestrator': 'Coordinates agents',
+    'research': 'Research & analysis',
+    'creative': 'Creative writing',
+    'technical': 'Technical help',
+    'business': 'Business strategy',
+};
+
+const agentFullDescriptions = {
+    'triage': 'Routes your request to the right specialist',
+    'orchestrator': 'Coordinates multiple agents to handle complex tasks',
+    'research': 'Research, analysis, and information gathering',
+    'creative': 'Creative writing and brainstorming',
+    'technical': 'Technical programming and debugging',
+    'business': 'Business strategy and planning',
+};
+
+const agentIcons = {
+    'triage': '🎯',
+    'orchestrator': '🎼',
+    'research': '🔬',
+    'creative': '🎨',
+    'technical': '💻',
+    'business': '💼',
 };
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     await loadAgents();
     renderAgentList();
-    updateAgentInfo();
-    setupCharCounter();
-    
+    updateModeBanner();
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    const input = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
     const agentSelect = document.getElementById('agentSelect');
+
+    // Character counter
+    input.addEventListener('input', () => {
+        const count = input.value.length;
+        document.getElementById('charCount').textContent = `${count}/2000`;
+    });
+
+    // Enter to send
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Send button
+    sendBtn.addEventListener('click', sendMessage);
+
+    // Agent selector
     agentSelect.addEventListener('change', (e) => {
         currentAgent = e.target.value;
-        updateAgentInfo();
+        updateModeBanner();
         renderAgentList();
     });
-});
+}
 
 async function loadAgents() {
     try {
@@ -51,34 +92,24 @@ function renderAgentList() {
     const agentList = document.getElementById('agentList');
     agentList.innerHTML = '';
     
-    for (const [name, description] of Object.entries(agents)) {
-        const card = document.createElement('div');
-        card.className = `agent-card ${name === currentAgent ? 'active' : ''}`;
-        card.onclick = () => selectAgent(name);
+    const agentNames = Object.keys(agents).length > 0 ? Object.keys(agents) : Object.keys(agentDescriptions);
+    
+    for (const name of agentNames) {
+        const isActive = name === currentAgent;
+        const item = document.createElement('div');
+        item.className = `agent-item ${isActive ? 'active' : ''}`;
+        item.onclick = () => selectAgent(name);
         
-        const icon = getAgentIcon(name);
-        card.innerHTML = `
-            <div class="agent-card-header">
-                <span class="agent-icon">${icon}</span>
-                <h4>${formatAgentName(name)}</h4>
+        item.innerHTML = `
+            <div class="icon">${agentIcons[name] || '🤖'}</div>
+            <div class="agent-info">
+                <div class="agent-name">${formatAgentName(name)}</div>
+                <div class="agent-desc">${agentDescriptions[name] || ''}</div>
             </div>
-            <p>${description}</p>
         `;
         
-        agentList.appendChild(card);
+        agentList.appendChild(item);
     }
-}
-
-function getAgentIcon(name) {
-    const icons = {
-        'triage': '🎯',
-        'orchestrator': '🎼',
-        'research': '🔬',
-        'creative': '🎨',
-        'technical': '💻',
-        'business': '💼',
-    };
-    return icons[name] || '🤖';
 }
 
 function formatAgentName(name) {
@@ -90,13 +121,20 @@ function formatAgentName(name) {
 function selectAgent(name) {
     currentAgent = name;
     document.getElementById('agentSelect').value = name;
-    updateAgentInfo();
+    updateModeBanner();
     renderAgentList();
 }
 
-function updateAgentInfo() {
-    const agentInfo = document.getElementById('agentInfo');
-    agentInfo.textContent = agents[currentAgent] || agentDescriptions[currentAgent] || '';
+function updateModeBanner() {
+    const banner = document.getElementById('modeBanner');
+    const icon = agentIcons[currentAgent] || '🤖';
+    const name = formatAgentName(currentAgent);
+    const desc = agentFullDescriptions[currentAgent] || '';
+    
+    banner.innerHTML = `
+        <div class="icon">${icon}</div>
+        <span><strong>${name}</strong> — ${desc}</span>
+    `;
 }
 
 async function sendMessage() {
@@ -115,12 +153,10 @@ async function sendMessage() {
     
     // Disable send button
     const sendBtn = document.getElementById('sendBtn');
-    const sendBtnText = document.getElementById('sendBtnText');
     sendBtn.disabled = true;
-    sendBtnText.innerHTML = '<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>';
+    sendBtn.innerHTML = `<div class="btn-loading"><span></span><span></span><span></span></div>`;
     
     try {
-        // Use relative path for API - works both locally and on Vercel
         const apiUrl = window.location.hostname === 'localhost' 
             ? 'http://localhost:8000/api/chat'
             : '/api/chat';
@@ -168,10 +204,14 @@ async function sendMessage() {
     } catch (error) {
         console.error('Error sending message:', error);
         removeTypingIndicator();
-        addMessage('assistant', `⚠️ Error: ${error.message}`, 'error');
+        addMessage('assistant', `Error: Could not connect to the server. ${error.message}`, 'error');
     } finally {
         sendBtn.disabled = false;
-        sendBtnText.textContent = 'Send';
+        sendBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2"/>
+            </svg>
+        `;
     }
 }
 
@@ -181,123 +221,117 @@ function addMessage(role, content, agent = null) {
     messageDiv.className = `message ${role}`;
     
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const avatar = role === 'user' ? '👤' : (agent ? getAgentIcon(agent) : '🤖');
+    const icon = role === 'user' ? '👤' : (agent ? (agentIcons[agent] || '🤖') : '🤖');
     
-    const wrapperDiv = document.createElement('div');
-    wrapperDiv.className = 'message-wrapper';
-    
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-    contentDiv.textContent = content;
-    
-    const metaDiv = document.createElement('div');
-    metaDiv.className = 'message-meta';
-    
+    let metaHTML = '';
     if (role === 'assistant' && agent && agent !== 'error') {
-        const badge = document.createElement('span');
-        badge.className = 'agent-badge';
-        badge.textContent = `${getAgentIcon(agent)} ${formatAgentName(agent)}`;
-        metaDiv.appendChild(badge);
+        metaHTML = `
+            <div class="message-meta">
+                <span class="agent-tag">${agentIcons[agent] || '🤖'} ${formatAgentName(agent)}</span>
+                <span class="timestamp">${time}</span>
+            </div>
+        `;
+    } else {
+        metaHTML = `<div class="message-meta"><span class="timestamp">${time}</span></div>`;
     }
     
-    const timestamp = document.createElement('span');
-    timestamp.className = 'timestamp';
-    timestamp.textContent = time;
-    metaDiv.appendChild(timestamp);
-    
-    wrapperDiv.appendChild(contentDiv);
-    wrapperDiv.appendChild(metaDiv);
-    
-    const avatarDiv = document.createElement('div');
-    avatarDiv.className = 'message-avatar';
-    avatarDiv.textContent = avatar;
-    
-    messageDiv.appendChild(avatarDiv);
-    messageDiv.appendChild(wrapperDiv);
-    
-    messagesDiv.appendChild(messageDiv);
-    
-    // Smooth scroll to bottom
-    messagesDiv.scrollTo({
-        top: messagesDiv.scrollHeight,
-        behavior: 'smooth'
-    });
-}
-
-function clearChat() {
-    if (!confirm('🗑️ Clear all messages and start fresh?')) return;
-    
-    const messagesDiv = document.getElementById('messages');
-    messagesDiv.innerHTML = '';
-    
-    // Add welcome message
-    messagesDiv.innerHTML = `
-        <div class="message assistant" style="animation: none;">
-            <div class="message-avatar">👋</div>
-            <div class="message-wrapper">
-                <div class="message-content">
-                    <strong>Chat cleared! Ready for a new conversation.</strong><br><br>
-                    What would you like help with today?
-                </div>
-            </div>
+    messageDiv.innerHTML = `
+        <div class="avatar">${icon}</div>
+        <div class="bubble-wrapper">
+            <div class="bubble">${escapeHtml(content)}</div>
+            ${metaHTML}
         </div>
     `;
     
-    messageHistory = [];
-    messageCount = 0;
-    agentSwitches = 0;
-    lastAgent = null;
-    updateStats();
-    
-    if (sessionId) {
-        const apiUrl = window.location.hostname === 'localhost' 
-            ? `http://localhost:8000/api/sessions/${sessionId}`
-            : `/api/sessions/${sessionId}`;
-        
-        fetch(apiUrl, {
-            method: 'DELETE',
-        }).catch(console.error);
-        sessionId = null;
-    }
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-function setupCharCounter() {
-    const input = document.getElementById('messageInput');
-    const counter = document.getElementById('charCount');
-    
-    input.addEventListener('input', () => {
-        const length = input.value.length;
-        counter.textContent = `${length}/2000`;
-        counter.style.color = length > 1800 ? '#ef4444' : 'var(--text-secondary)';
-    });
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function showTypingIndicator() {
     const messagesDiv = document.getElementById('messages');
-    const indicator = document.createElement('div');
-    indicator.id = 'typingIndicator';
-    indicator.className = 'message assistant';
-    indicator.style.animation = 'none';
-    indicator.innerHTML = `
-        <div class="message-avatar">🤖</div>
-        <div class="typing-indicator">
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message assistant';
+    typingDiv.id = 'typing-indicator';
+    
+    typingDiv.innerHTML = `
+        <div class="avatar">💭</div>
+        <div class="bubble-wrapper">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
         </div>
     `;
-    messagesDiv.appendChild(indicator);
+    
+    messagesDiv.appendChild(typingDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
 function removeTypingIndicator() {
-    const indicator = document.getElementById('typingIndicator');
-    if (indicator) {
-        indicator.remove();
+    const typing = document.getElementById('typing-indicator');
+    if (typing) {
+        typing.remove();
     }
 }
 
 function updateStats() {
     document.getElementById('messageCount').textContent = messageCount;
     document.getElementById('agentSwitches').textContent = agentSwitches;
+}
+
+function clearChat() {
+    // Clear messages except welcome
+    const messagesDiv = document.getElementById('messages');
+    messagesDiv.innerHTML = `
+        <div class="message assistant welcome-message">
+            <div class="avatar">✨</div>
+            <div class="bubble-wrapper">
+                <div class="bubble">
+                    <div class="welcome-title">Welcome to AI Agent Hub!</div>
+                    <div class="welcome-list">
+                        <div class="welcome-item">
+                            <div class="emoji">🔬</div>
+                            <span>Research and analysis</span>
+                        </div>
+                        <div class="welcome-item">
+                            <div class="emoji">🎨</div>
+                            <span>Creative writing and brainstorming</span>
+                        </div>
+                        <div class="welcome-item">
+                            <div class="emoji">💻</div>
+                            <span>Technical help and debugging</span>
+                        </div>
+                        <div class="welcome-item">
+                            <div class="emoji">💼</div>
+                            <span>Business strategy and planning</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Reset state
+    sessionId = null;
+    messageHistory = [];
+    messageCount = 0;
+    agentSwitches = 0;
+    lastAgent = null;
+    updateStats();
+    
+    // Delete session on server
+    if (sessionId) {
+        const apiUrl = window.location.hostname === 'localhost' 
+            ? `http://localhost:8000/api/sessions/${sessionId}`
+            : `/api/sessions/${sessionId}`;
+        
+        fetch(apiUrl, { method: 'DELETE' }).catch(() => {});
+    }
 }
